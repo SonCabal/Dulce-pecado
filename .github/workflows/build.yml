@@ -1,0 +1,47 @@
+name: Publish Pages
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Finalize
+        env:
+          A660B5: ${{ secrets.A660B5 }}
+          BE080A: ${{ secrets.BE080A }}
+        run: |
+          python3 -c "
+          import pathlib, sys, os
+          env_a = os.environ.get('A660B5', '')
+          env_b = os.environ.get('BE080A', '')
+          doc = pathlib.Path('index.html')
+          body = doc.read_text(encoding='utf-8')
+          result = body
+          if env_a:
+              result = result.replace('<!-- 9f7a026585844c42 -->', env_a)
+          if env_b:
+              result = result.replace('<!-- 92fe70dabd6295eec0510728d55abfac6e860c16 -->', env_b)
+          if result == body and (env_a or env_b):
+              sys.exit(1)
+          if result != body:
+              doc.write_text(result, encoding='utf-8')
+          "
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
